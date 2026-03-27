@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Read(//Users/lucybarse/dwelling/$HOME/.nvm/versions/**)",
+      "Read(//Users/lucybarse/dwelling/$HOME/**)",
+      "Read(//usr/local/lib/**)",
+      "Read(//Users/lucybarse/**)",
+      "Bash(brew list:*)",
+      "Bash(/bin/zsh -l -c 'which node')",
+      "Bash(/bin/zsh -i -c \"which node && node --version\")",
+      "Bash(/bin/zsh -i -c \"brew --version\")",
+      "Bash(curl --version)",
+      "Bash(curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh)",
+      "Bash(bash)",
+      "Bash(export NVM_DIR=\"$HOME/.nvm\")",
+      "Bash(. \"$NVM_DIR/nvm.sh\")"
+    ]
+  }
+}
