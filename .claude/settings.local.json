@@ -14,7 +14,15 @@
       "Bash(curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh)",
       "Bash(bash)",
       "Bash(export NVM_DIR=\"$HOME/.nvm\")",
-      "Bash(. \"$NVM_DIR/nvm.sh\")"
+      "Bash(. \"$NVM_DIR/nvm.sh\")",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(node -e \":*)",
+      "Bash(node --env-file=.env.local -e \":*)",
+      "Bash(xargs sed:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(find /Users/lucybarse/dwelling/node_modules -path */tailwindcss/dist/docs* -name *.md)",
+      "Bash(find /Users/lucybarse/dwelling/node_modules/tailwindcss -name *.md)"
     ]
   }
 }
