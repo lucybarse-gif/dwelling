@@ -214,7 +214,7 @@ export default async function HomePage() {
               Live
             </span>
           </div>
-          <div className="grid lg:grid-cols-2 gap-4">
+          <div className="max-w-2xl mx-auto">
             <ReviewFeed initial={feedReviews} />
           </div>
         </section>
