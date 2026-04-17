@@ -37,13 +37,15 @@ async function geocodeAddress(
     houseNumber: parsed.houseNumber,
     street: parsed.street,
     ...(borough ? { borough } : {}),
-    subscriptionKey: key,
   });
 
   try {
     const res = await fetch(
       `https://api.nyc.gov/geoclient/v2/address.json?${params}`,
-      { next: { revalidate: 3600 } }
+      {
+        headers: { "Ocp-Apim-Subscription-Key": key },
+        next: { revalidate: 3600 },
+      }
     );
     if (!res.ok) return null;
 
