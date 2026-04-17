@@ -11,8 +11,9 @@ drop function if exists search_buildings(text,text,text,integer,integer);
 drop function if exists count_buildings_search(text,text,text);
 drop function if exists get_neighborhoods(text);
 
--- normalize_address_query: converts full street-type words to PLUTO abbreviations
--- so "42nd Street" and "42nd St" both match stored addresses like "67 W 42nd St"
+-- normalize_address_query: strip ordinal suffixes and abbreviate street types
+-- so user input like "7th", "1st", "42nd" matches PLUTO's plain numbers ("7", "1", "42"),
+-- and "Street"/"Avenue" match abbreviated PLUTO forms ("ST", "AVE").
 create or replace function normalize_address_query(q text)
 returns text
 language sql
@@ -22,24 +23,10 @@ as $$
     regexp_replace(
     regexp_replace(
     regexp_replace(
-    regexp_replace(
-    regexp_replace(
-    regexp_replace(
-    regexp_replace(
-    regexp_replace(
-    regexp_replace(
-    regexp_replace(
-      q,
-    '\ystreet\y',     'St',   'gi'),
-    '\yavenue\y',     'Ave',  'gi'),
-    '\yboulevard\y',  'Blvd', 'gi'),
-    '\ydrive\y',      'Dr',   'gi'),
-    '\yroad\y',       'Rd',   'gi'),
-    '\yplace\y',      'Pl',   'gi'),
-    '\ycourt\y',      'Ct',   'gi'),
-    '\ylane\y',       'Ln',   'gi'),
-    '\yparkway\y',    'Pkwy', 'gi'),
-    '\yexpressway\y', 'Expy', 'gi')
+      trim(q),
+    '(\d+)(st|nd|rd|th)\y', '\1', 'gi'),  -- 7th→7, 1st→1, 42nd→42
+    '\ystreet\y',  'st',  'gi'),           -- Street→st
+    '\yavenue\y',  'ave', 'gi')            -- Avenue→ave
 $$;
 
 -- search_buildings: fuzzy address search with optional borough/neighborhood filters.
