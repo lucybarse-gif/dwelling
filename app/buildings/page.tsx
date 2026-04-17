@@ -85,6 +85,8 @@ export default async function BuildingsPage({
     }) as { data: BuildingWithStats[] | null; error: any };
 
     if (searchError) console.error("search_buildings RPC error:", JSON.stringify(searchError));
+    // Temporarily expose error in UI for debugging
+    if (searchError) return <pre style={{padding:20,color:'red'}}>{JSON.stringify(searchError, null, 2)}</pre>;
     buildings = searchRows ?? [];
 
     // Get total count separately
