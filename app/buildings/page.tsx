@@ -42,18 +42,11 @@ export default async function BuildingsPage({
   const supabase = await createClient();
 
   // Normalize search query: strip city/state and punctuation, expand abbreviations to full words
+  // Strip city/state suffixes and punctuation — leave abbreviations intact
+  // so they match PLUTO-format addresses (e.g. "42nd St", "Atlantic Ave")
   const normalizedQ = q
     ? q
         .replace(/,?\s*(new york city|new york|nyc|ny)\s*$/gi, "")
-        .replace(/\bst\b/gi, "street")
-        .replace(/\bave\b/gi, "avenue")
-        .replace(/\bblvd\b/gi, "boulevard")
-        .replace(/\bdr\b/gi, "drive")
-        .replace(/\brd\b/gi, "road")
-        .replace(/\bpl\b/gi, "place")
-        .replace(/\bct\b/gi, "court")
-        .replace(/\bln\b/gi, "lane")
-        .replace(/\bpkwy\b/gi, "parkway")
         .replace(/[,#]/g, "")
         .trim()
     : undefined;
@@ -74,19 +67,15 @@ export default async function BuildingsPage({
   let count: number | null = null;
 
   if (normalizedQ) {
-    console.log("Searching for:", normalizedQ, "borough:", borough, "neighborhood:", neighborhood);
     // Use a DB function to avoid PostgREST URL-encoding issues with % wildcards
-    const { data: searchRows, error: searchError } = await (supabase as any).rpc("search_buildings", {
+    const { data: searchRows } = await (supabase as any).rpc("search_buildings", {
       query_text: normalizedQ,
       p_borough: borough ?? null,
       p_neighborhood: neighborhood ?? null,
       p_limit: PAGE_SIZE,
       p_offset: offset,
-    }) as { data: BuildingWithStats[] | null; error: any };
+    }) as { data: BuildingWithStats[] | null };
 
-    if (searchError) console.error("search_buildings RPC error:", JSON.stringify(searchError));
-    // Temporarily expose error in UI for debugging
-    if (searchError) return <pre style={{padding:20,color:'red'}}>{JSON.stringify(searchError, null, 2)}</pre>;
     buildings = searchRows ?? [];
 
     // Get total count separately
