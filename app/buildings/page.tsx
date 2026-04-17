@@ -75,14 +75,15 @@ export default async function BuildingsPage({
 
   if (normalizedQ) {
     // Use a DB function to avoid PostgREST URL-encoding issues with % wildcards
-    const { data: searchRows } = await (supabase as any).rpc("search_buildings", {
+    const { data: searchRows, error: searchError } = await (supabase as any).rpc("search_buildings", {
       query_text: normalizedQ,
       p_borough: borough ?? null,
       p_neighborhood: neighborhood ?? null,
       p_limit: PAGE_SIZE,
       p_offset: offset,
-    }) as { data: BuildingWithStats[] | null };
+    }) as { data: BuildingWithStats[] | null; error: any };
 
+    if (searchError) console.error("search_buildings RPC error:", JSON.stringify(searchError));
     buildings = searchRows ?? [];
 
     // Get total count separately
