@@ -1,5 +1,7 @@
 import Link from "next/link";
 import SearchBar from "@/components/SearchBar";
+import ReviewFeed from "@/components/ReviewFeed";
+import type { FeedReview } from "@/components/ReviewFeed";
 import { createClient } from "@/lib/supabase/server";
 import type { BuildingWithStats } from "@/types/database";
 
@@ -37,6 +39,50 @@ export default async function HomePage() {
     .gt("review_count", 0)
     .order("review_count", { ascending: false })
     .limit(4)) as { data: BuildingWithStats[] | null };
+
+  // Fetch recent reviews for the live feed
+  type RawReview = { id: string; building_id: string; overall_rating: number; content: string; is_anonymous: boolean; created_at: string; user_id: string };
+  type RawBuilding = { id: string; address: string; neighborhood: string | null; borough: string };
+  type RawProfile = { id: string; display_name: string | null };
+
+  const { data: recentReviewRows } = await (supabase as any)
+    .from("reviews")
+    .select("id, building_id, overall_rating, content, is_anonymous, created_at, user_id")
+    .order("created_at", { ascending: false })
+    .limit(10) as { data: RawReview[] | null };
+
+  const rows = recentReviewRows ?? [];
+
+  // Fetch buildings and profiles in parallel
+  const buildingIds = [...new Set(rows.map((r) => r.building_id))];
+  const profileUserIds = [...new Set(rows.filter((r) => !r.is_anonymous).map((r) => r.user_id))];
+
+  const [buildingsRes, profilesRes] = await Promise.all([
+    buildingIds.length > 0
+      ? (supabase as any).from("buildings").select("id, address, neighborhood, borough").in("id", buildingIds) as Promise<{ data: RawBuilding[] | null }>
+      : Promise.resolve({ data: [] as RawBuilding[] }),
+    profileUserIds.length > 0
+      ? (supabase as any).from("profiles").select("id, display_name").in("id", profileUserIds) as Promise<{ data: RawProfile[] | null }>
+      : Promise.resolve({ data: [] as RawProfile[] }),
+  ]);
+
+  const buildingMap = Object.fromEntries((buildingsRes.data ?? []).map((b) => [b.id, b]));
+  const profileMap = Object.fromEntries((profilesRes.data ?? []).map((p) => [p.id, p.display_name]));
+
+  const feedReviews: FeedReview[] = rows
+    .filter((r) => buildingMap[r.building_id])
+    .map((r) => ({
+      id: r.id,
+      building_id: r.building_id,
+      address: buildingMap[r.building_id].address,
+      neighborhood: buildingMap[r.building_id].neighborhood,
+      borough: buildingMap[r.building_id].borough,
+      overall_rating: r.overall_rating,
+      content: r.content,
+      display_name: r.is_anonymous ? null : profileMap[r.user_id] ?? null,
+      is_anonymous: r.is_anonymous,
+      created_at: r.created_at,
+    }));
 
   // Totals for social proof
   const { count: buildingCount } = await supabase
@@ -151,6 +197,25 @@ export default async function HomePage() {
                 </Link>
               ))}
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Live review feed */}
+      {feedReviews.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-stone-900">Latest reviews</h2>
+              <p className="text-sm text-stone-400 mt-1">Updates live as new reviews come in</p>
+            </div>
+            <span className="flex items-center gap-1.5 text-xs text-green-600 font-medium bg-green-50 border border-green-200 px-3 py-1.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Live
+            </span>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-4">
+            <ReviewFeed initial={feedReviews} />
           </div>
         </section>
       )}
