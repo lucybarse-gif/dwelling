@@ -39,7 +39,7 @@ function StatItem({ label, value }: StatItemProps) {
 
 type ReviewWithProfile = Review & { profiles: { display_name: string | null } | null };
 
-function ReviewCard({ review }: { review: ReviewWithProfile }) {
+function ReviewCard({ review, isOwn, buildingId }: { review: ReviewWithProfile; isOwn: boolean; buildingId: string }) {
   const displayName = review.is_anonymous
     ? "Anonymous"
     : review.profiles?.display_name ?? "Resident";
@@ -70,6 +70,17 @@ function ReviewCard({ review }: { review: ReviewWithProfile }) {
 
       <p className="text-sm text-stone-700 leading-relaxed">{review.content}</p>
 
+      {isOwn && (
+        <div className="mt-3 pt-3 border-t border-stone-100">
+          <Link
+            href={`/buildings/${buildingId}/review`}
+            className="text-xs font-medium text-brand-600 hover:text-brand-700"
+          >
+            Edit your review
+          </Link>
+        </div>
+      )}
+
       {/* Sub-ratings */}
       {(review.noise_rating || review.management_rating || review.safety_rating || review.value_rating) && (
         <div className="mt-4 pt-4 border-t border-stone-100 grid grid-cols-2 gap-2">
@@ -90,6 +101,8 @@ export default async function BuildingPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
 
   const [buildingResult, reviewsResult] = await Promise.all([
     supabase.from("buildings_with_stats").select("*").eq("id", id).single(),
@@ -236,7 +249,7 @@ export default async function BuildingPage({
           {reviews && reviews.length > 0 ? (
             <div className="space-y-4">
               {reviews.map((review) => (
-                <ReviewCard key={review.id} review={review} />
+                <ReviewCard key={review.id} review={review} isOwn={review.user_id === user?.id} buildingId={id} />
               ))}
             </div>
           ) : (

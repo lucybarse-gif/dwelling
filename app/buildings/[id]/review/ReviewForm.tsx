@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import StarRating from "@/components/StarRating";
 import { createClient } from "@/lib/supabase/client";
-import type { ReviewInsert } from "@/types/database";
+import type { Review, ReviewInsert } from "@/types/database";
 
 interface ReviewFormProps {
   buildingId: string;
   userId: string;
+  existingReview?: Review | null;
 }
 
 interface FormState {
@@ -46,9 +47,27 @@ const SUB_RATINGS: { key: keyof FormState; label: string; description: string }[
   { key: "value_rating", label: "Value", description: "Rent vs. quality and amenities" },
 ];
 
-export default function ReviewForm({ buildingId, userId }: ReviewFormProps) {
+function initialStateFromReview(existing: Review | null | undefined): FormState {
+  if (!existing) return INITIAL_STATE;
+  return {
+    overall_rating: existing.overall_rating,
+    noise_rating: existing.noise_rating ?? 0,
+    management_rating: existing.management_rating ?? 0,
+    safety_rating: existing.safety_rating ?? 0,
+    value_rating: existing.value_rating ?? 0,
+    content: existing.content,
+    unit_number: existing.unit_number ?? "",
+    // DB stores YYYY-MM-DD; <input type="month"> needs YYYY-MM
+    tenancy_start: existing.tenancy_start ? existing.tenancy_start.slice(0, 7) : "",
+    tenancy_end: existing.tenancy_end ? existing.tenancy_end.slice(0, 7) : "",
+    is_current_tenant: existing.is_current_tenant,
+    is_anonymous: existing.is_anonymous,
+  };
+}
+
+export default function ReviewForm({ buildingId, userId, existingReview }: ReviewFormProps) {
   const router = useRouter();
-  const [form, setForm] = useState<FormState>(INITIAL_STATE);
+  const [form, setForm] = useState<FormState>(() => initialStateFromReview(existingReview));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,9 +94,7 @@ export default function ReviewForm({ buildingId, userId }: ReviewFormProps) {
     setSubmitting(true);
     const supabase = createClient();
 
-    const payload: ReviewInsert = {
-      building_id: buildingId,
-      user_id: userId,
+    const fields = {
       overall_rating: form.overall_rating,
       noise_rating: form.noise_rating || null,
       management_rating: form.management_rating || null,
@@ -90,13 +107,24 @@ export default function ReviewForm({ buildingId, userId }: ReviewFormProps) {
       is_current_tenant: form.is_current_tenant,
       is_anonymous: form.is_anonymous,
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: insertError } = await (supabase.from("reviews") as any).insert(payload);
+
+    let opError: any = null;
+
+    if (existingReview) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from("reviews") as any).update(fields).eq("id", existingReview.id);
+      opError = error;
+    } else {
+      const payload: ReviewInsert = { building_id: buildingId, user_id: userId, ...fields };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from("reviews") as any).insert(payload);
+      opError = error;
+    }
 
     setSubmitting(false);
 
-    if (insertError) {
-      setError(insertError.message);
+    if (opError) {
+      setError(opError.message);
     } else {
       router.push(`/buildings/${buildingId}?review_submitted=1`);
     }
@@ -234,7 +262,7 @@ export default function ReviewForm({ buildingId, userId }: ReviewFormProps) {
         disabled={submitting}
         className="w-full bg-brand-600 text-white py-3 rounded-xl font-medium text-sm hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {submitting ? "Submitting…" : "Submit review"}
+        {submitting ? "Saving…" : existingReview ? "Update review" : "Submit review"}
       </button>
 
       <p className="text-xs text-stone-400 text-center">

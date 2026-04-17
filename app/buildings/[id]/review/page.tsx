@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ReviewForm from "./ReviewForm";
 import type { Building } from "@/types/database";
@@ -30,28 +30,26 @@ export default async function ReviewPage({
 
   if (!building) notFound();
 
-  // Check if user already submitted a review for this building
-  const { data: existing } = await supabase
+  // Load existing review if the user has one (for editing)
+  const { data: existing } = await (supabase as any)
     .from("reviews")
-    .select("id")
+    .select("*")
     .eq("building_id", id)
     .eq("user_id", userId)
-    .single();
-
-  if (existing) {
-    redirect(`/buildings/${id}?already_reviewed=1`);
-  }
+    .single() as { data: import("@/types/database").Review | null };
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
-      <h1 className="text-2xl font-bold text-stone-900 mb-1">Write a review</h1>
+      <h1 className="text-2xl font-bold text-stone-900 mb-1">
+        {existing ? "Edit your review" : "Write a review"}
+      </h1>
       <p className="text-stone-500 text-sm mb-8">
         {building.address},{" "}
         {building.neighborhood ? `${building.neighborhood}, ` : ""}
         {building.borough}, NY {building.zip_code}
       </p>
 
-      <ReviewForm buildingId={id} userId={userId} />
+      <ReviewForm buildingId={id} userId={userId} existingReview={existing} />
     </div>
   );
 }
