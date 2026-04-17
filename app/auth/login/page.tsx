@@ -21,15 +21,20 @@ function LoginForm() {
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      setError(error.message);
-    } else {
-      router.push(next);
-      router.refresh();
+      if (error) {
+        setError(error.message);
+      } else {
+        router.push(next);
+        router.refresh();
+      }
+    } catch (err: any) {
+      setError(err?.message ?? "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
