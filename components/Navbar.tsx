@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 
-export default function Navbar() {
+interface NavbarProps {
+  userEmail?: string | null;
+}
+
+export default function Navbar({ userEmail }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -24,18 +28,40 @@ export default function Navbar() {
             >
               Search Buildings
             </Link>
-            <Link
-              href="/auth/login"
-              className="text-sm text-stone-600 hover:text-stone-900 transition-colors"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/auth/signup"
-              className="text-sm bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors"
-            >
-              Write a Review
-            </Link>
+            {userEmail ? (
+              <>
+                <span className="text-sm text-stone-500 max-w-[160px] truncate">{userEmail}</span>
+                <form action="/auth/signout" method="POST">
+                  <button
+                    type="submit"
+                    className="text-sm text-stone-600 hover:text-stone-900 transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </form>
+                <Link
+                  href="/buildings"
+                  className="text-sm bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors"
+                >
+                  Write a Review
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/auth/login"
+                  className="text-sm text-stone-600 hover:text-stone-900 transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="text-sm bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors"
+                >
+                  Write a Review
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -54,10 +80,24 @@ export default function Navbar() {
         {menuOpen && (
           <div className="sm:hidden border-t border-stone-100 py-4 flex flex-col gap-3">
             <Link href="/buildings" className="text-sm text-stone-700 py-1">Search Buildings</Link>
-            <Link href="/auth/login" className="text-sm text-stone-700 py-1">Sign In</Link>
-            <Link href="/auth/signup" className="text-sm bg-brand-600 text-white px-4 py-2 rounded-lg text-center">
-              Write a Review
-            </Link>
+            {userEmail ? (
+              <>
+                <span className="text-sm text-stone-500 py-1 truncate">{userEmail}</span>
+                <form action="/auth/signout" method="POST">
+                  <button type="submit" className="text-sm text-stone-700 py-1">Sign Out</button>
+                </form>
+                <Link href="/buildings" className="text-sm bg-brand-600 text-white px-4 py-2 rounded-lg text-center">
+                  Write a Review
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/auth/login" className="text-sm text-stone-700 py-1">Sign In</Link>
+                <Link href="/auth/signup" className="text-sm bg-brand-600 text-white px-4 py-2 rounded-lg text-center">
+                  Write a Review
+                </Link>
+              </>
+            )}
           </div>
         )}
       </div>

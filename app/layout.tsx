@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Dwelling — NYC Apartment Reviews",
@@ -8,15 +9,18 @@ export const metadata: Metadata = {
     "Find honest reviews and ratings for NYC apartment buildings. Search by address, neighborhood, or ZIP code.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <html lang="en" className="h-full">
       <body className="min-h-full flex flex-col bg-stone-50 text-stone-900 antialiased">
-        <Navbar />
+        <Navbar userEmail={user?.email} />
         <main className="flex-1">{children}</main>
         <footer className="border-t border-stone-200 bg-white py-8 mt-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center text-xs text-stone-400">
