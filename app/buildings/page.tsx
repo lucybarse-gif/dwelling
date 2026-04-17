@@ -61,7 +61,7 @@ export default async function BuildingsPage({
   // Fetch distinct neighborhoods via RPC (avoids default 1000-row limit)
   let neighborhoods: string[] = [];
   if (borough && NEIGHBORHOOD_BOROUGHS.has(borough)) {
-    const { data: nRows } = await supabase.rpc("get_neighborhoods", {
+    const { data: nRows } = await (supabase as any).rpc("get_neighborhoods", {
       p_borough: borough,
     }) as { data: { neighborhood: string }[] | null };
 
