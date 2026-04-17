@@ -70,41 +70,28 @@ export default async function BuildingsPage({
     }
   }
 
-  // When searching, query the buildings table directly (uses trgm index),
-  // then fetch stats only for matching IDs. This avoids scanning the full view.
   let buildings: BuildingWithStats[] | null = null;
   let count: number | null = null;
 
   if (normalizedQ) {
-    // Step 1: find matching IDs from buildings table (fast — uses gin index)
-    let idQuery = (supabase as any)
-      .from("buildings")
-      .select("id", { count: "exact" })
-      .or(
-        `address.ilike.%${normalizedQ}%,neighborhood.ilike.%${normalizedQ}%,zip_code.ilike.%${normalizedQ}%`
-      );
-    if (borough) idQuery = idQuery.eq("borough", borough);
-    if (neighborhood) idQuery = idQuery.eq("neighborhood", neighborhood);
+    // Use a DB function to avoid PostgREST URL-encoding issues with % wildcards
+    const { data: searchRows } = await (supabase as any).rpc("search_buildings", {
+      query_text: normalizedQ,
+      p_borough: borough ?? null,
+      p_neighborhood: neighborhood ?? null,
+      p_limit: PAGE_SIZE,
+      p_offset: offset,
+    }) as { data: BuildingWithStats[] | null };
 
-    const { data: idRows, count: idCount } = await idQuery as {
-      data: { id: string }[] | null;
-      count: number | null;
-    };
+    buildings = searchRows ?? [];
 
-    count = idCount ?? 0;
-    const ids = (idRows ?? []).map((r: { id: string }) => r.id).slice(offset, offset + PAGE_SIZE);
-
-    // Step 2: fetch full stats for just those IDs
-    if (ids.length > 0) {
-      const { data } = await (supabase as any)
-        .from("buildings_with_stats")
-        .select("*")
-        .in("id", ids)
-        .order("review_count", { ascending: false }) as { data: BuildingWithStats[] | null };
-      buildings = data;
-    } else {
-      buildings = [];
-    }
+    // Get total count separately
+    const { data: countRow } = await (supabase as any).rpc("count_buildings_search", {
+      query_text: normalizedQ,
+      p_borough: borough ?? null,
+      p_neighborhood: neighborhood ?? null,
+    }) as { data: number | null };
+    count = countRow ?? buildings.length;
   } else {
     // No search — query the view directly with filters (no timeout risk on small result sets)
     let query = (supabase as any)

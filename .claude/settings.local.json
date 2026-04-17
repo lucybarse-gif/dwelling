@@ -22,7 +22,10 @@
       "Bash(xargs sed:*)",
       "mcp__Claude_Preview__preview_start",
       "Bash(find /Users/lucybarse/dwelling/node_modules -path */tailwindcss/dist/docs* -name *.md)",
-      "Bash(find /Users/lucybarse/dwelling/node_modules/tailwindcss -name *.md)"
+      "Bash(find /Users/lucybarse/dwelling/node_modules/tailwindcss -name *.md)",
+      "WebFetch(domain:project-qjqlk-ego02a0j8-lucybarse113-6202s-projects.vercel.app)",
+      "WebFetch(domain:project-qjqlk.vercel.app)",
+      "WebFetch(domain:dwelling-tan.vercel.app)"
     ]
   }
 }
