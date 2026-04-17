@@ -74,6 +74,7 @@ export default async function BuildingsPage({
   let count: number | null = null;
 
   if (normalizedQ) {
+    console.log("Searching for:", normalizedQ, "borough:", borough, "neighborhood:", neighborhood);
     // Use a DB function to avoid PostgREST URL-encoding issues with % wildcards
     const { data: searchRows, error: searchError } = await (supabase as any).rpc("search_buildings", {
       query_text: normalizedQ,
