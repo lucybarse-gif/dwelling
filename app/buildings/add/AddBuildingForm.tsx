@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { addBuilding } from "./actions";
 
 const BOROUGHS = ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"];
 
@@ -15,12 +15,10 @@ export default function AddBuildingForm({ defaultAddress = "" }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
-    address: defaultAddress.replace(/,?\s*(new york|ny|nyc).*/gi, "").trim(),
+    address: defaultAddress.replace(/,?\s*(new york city|new york|nyc|ny)\s*$/gi, "").trim(),
     borough: "",
     zip_code: "",
     neighborhood: "",
-    units_total: "",
-    year_built: "",
   });
 
   function setField(key: keyof typeof form, value: string) {
@@ -36,34 +34,37 @@ export default function AddBuildingForm({ defaultAddress = "" }: Props) {
     if (!form.zip_code.trim()) return setError("ZIP code is required.");
 
     setSubmitting(true);
-    const supabase = createClient();
 
-    const payload = {
+    // Generate a placeholder BBL so the unique constraint is satisfied.
+    // Format: MANUAL-<borough-initial>-<address-slug>
+    const slug = form.address
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .slice(0, 40);
+    const placeholderBbl = `MANUAL-${form.borough[0]}-${slug}-${Date.now()}`;
+
+    const result = await addBuilding({
+      bbl: placeholderBbl,
       address: form.address.trim().toUpperCase(),
       borough: form.borough,
       zip_code: form.zip_code.trim(),
       neighborhood: form.neighborhood.trim() || null,
-      units_total: form.units_total ? parseInt(form.units_total) : null,
-      year_built: form.year_built ? parseInt(form.year_built) : null,
-    };
-
-    const { data, error: insertError } = await (supabase.from("buildings") as any)
-      .insert(payload)
-      .select("id")
-      .single();
+      latitude: null,
+      longitude: null,
+    });
 
     setSubmitting(false);
 
-    if (insertError) {
-      setError(insertError.message);
-    } else {
-      router.push(`/buildings/${data.id}?building_added=1`);
+    if (result.error) {
+      setError(result.error);
+    } else if (result.id) {
+      router.push(`/buildings/${result.id}`);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Address */}
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div>
         <label className="block text-sm font-medium text-stone-700 mb-1">
           Street address <span className="text-red-500">*</span>
@@ -72,12 +73,14 @@ export default function AddBuildingForm({ defaultAddress = "" }: Props) {
           type="text"
           value={form.address}
           onChange={(e) => setField("address", e.target.value)}
-          placeholder="e.g. 285 MOTT STREET"
+          placeholder="e.g. 15 EAST 30 ST"
           className="w-full px-4 py-3 border border-stone-300 rounded-xl text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
         />
+        <p className="text-xs text-stone-400 mt-1">
+          Use the abbreviated format NYC uses — e.g. &ldquo;ST&rdquo; not &ldquo;Street&rdquo;
+        </p>
       </div>
 
-      {/* Borough + ZIP */}
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-stone-700 mb-1">
@@ -90,7 +93,9 @@ export default function AddBuildingForm({ defaultAddress = "" }: Props) {
           >
             <option value="">Select borough…</option>
             {BOROUGHS.map((b) => (
-              <option key={b} value={b}>{b}</option>
+              <option key={b} value={b}>
+                {b}
+              </option>
             ))}
           </select>
         </div>
@@ -102,56 +107,25 @@ export default function AddBuildingForm({ defaultAddress = "" }: Props) {
             type="text"
             value={form.zip_code}
             onChange={(e) => setField("zip_code", e.target.value)}
-            placeholder="e.g. 10012"
+            placeholder="e.g. 10016"
             maxLength={5}
             className="w-full px-4 py-3 border border-stone-300 rounded-xl text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
       </div>
 
-      {/* Neighborhood */}
       <div>
         <label className="block text-sm font-medium text-stone-700 mb-1">
-          Neighborhood <span className="text-stone-400 font-normal">(optional)</span>
+          Neighborhood{" "}
+          <span className="text-stone-400 font-normal">(optional)</span>
         </label>
         <input
           type="text"
           value={form.neighborhood}
           onChange={(e) => setField("neighborhood", e.target.value)}
-          placeholder="e.g. NoLita"
+          placeholder="e.g. Murray Hill"
           className="w-full px-4 py-3 border border-stone-300 rounded-xl text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
         />
-      </div>
-
-      {/* Units + Year built */}
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-stone-700 mb-1">
-            Number of units <span className="text-stone-400 font-normal">(optional)</span>
-          </label>
-          <input
-            type="number"
-            value={form.units_total}
-            onChange={(e) => setField("units_total", e.target.value)}
-            placeholder="e.g. 24"
-            min={1}
-            className="w-full px-4 py-3 border border-stone-300 rounded-xl text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-stone-700 mb-1">
-            Year built <span className="text-stone-400 font-normal">(optional)</span>
-          </label>
-          <input
-            type="number"
-            value={form.year_built}
-            onChange={(e) => setField("year_built", e.target.value)}
-            placeholder="e.g. 1920"
-            min={1800}
-            max={new Date().getFullYear()}
-            className="w-full px-4 py-3 border border-stone-300 rounded-xl text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-          />
-        </div>
       </div>
 
       {error && (
@@ -169,7 +143,7 @@ export default function AddBuildingForm({ defaultAddress = "" }: Props) {
       </button>
 
       <p className="text-xs text-stone-400 text-center">
-        Once added, you'll be taken directly to the building page to write a review.
+        Once added, you&rsquo;ll be taken to the building page to write a review.
       </p>
     </form>
   );
