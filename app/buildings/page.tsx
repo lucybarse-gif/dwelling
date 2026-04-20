@@ -201,7 +201,7 @@ export default async function BuildingsPage({
             <div className="mt-8 border border-dashed border-stone-300 rounded-xl p-6 text-center">
               <p className="text-sm text-stone-500">Don't see your building?</p>
               <a
-                href={`/buildings/add${q ? `?address=${encodeURIComponent(q)}` : ""}`}
+                href={`/buildings/add?address=${encodeURIComponent(q)}${borough ? `&borough=${encodeURIComponent(borough)}` : ""}`}
                 className="mt-2 inline-block text-sm font-medium text-brand-600 hover:text-brand-700"
               >
                 + Add it to Dwelling
@@ -216,7 +216,7 @@ export default async function BuildingsPage({
           <p className="text-sm mt-1 mb-6">Try a different search term or filter.</p>
           {q && (
             <a
-              href={`/buildings/add?address=${encodeURIComponent(q)}`}
+              href={`/buildings/add?address=${encodeURIComponent(q)}${borough ? `&borough=${encodeURIComponent(borough)}` : ""}`}
               className="inline-block bg-brand-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
             >
               + Add your building

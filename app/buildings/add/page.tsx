@@ -23,6 +23,41 @@ function parseAddress(raw: string): { houseNumber: string; street: string } | nu
   return { houseNumber: match[1], street: match[2] };
 }
 
+const ALL_BOROUGHS = ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"];
+
+async function tryGeoClient(
+  key: string,
+  houseNumber: string,
+  street: string,
+  borough: string
+): Promise<GeoBuilding | null> {
+  const params = new URLSearchParams({ houseNumber, street, borough });
+  try {
+    const res = await fetch(
+      `https://api.nyc.gov/geoclient/v2/address.json?${params}`,
+      {
+        headers: { "Ocp-Apim-Subscription-Key": key },
+        next: { revalidate: 3600 },
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const a = data?.address;
+    if (!a || a.geosupportReturnCode !== "00") return null;
+    return {
+      bbl: a.bbl,
+      address: `${a.houseNumberIn} ${a.firstStreetNameNormalized}`,
+      borough: BOROUGH_CODE_MAP[a.bblBoroughCode] ?? borough,
+      zip_code: a.zipCode ?? "",
+      neighborhood: a.ntaName ?? null,
+      latitude: a.latitude != null ? parseFloat(a.latitude) : null,
+      longitude: a.longitude != null ? parseFloat(a.longitude) : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function geocodeAddress(
   address: string,
   borough?: string
@@ -33,36 +68,19 @@ async function geocodeAddress(
   const parsed = parseAddress(address);
   if (!parsed) return null;
 
-  const params = new URLSearchParams({
-    houseNumber: parsed.houseNumber,
-    street: parsed.street,
-    ...(borough ? { borough } : {}),
-  });
+  // Try the specified borough first, then fall back to all boroughs
+  const boroughsToTry = borough
+    ? [borough, ...ALL_BOROUGHS.filter((b) => b !== borough)]
+    : ALL_BOROUGHS;
 
+  for (const b of boroughsToTry) {
+    const result = await tryGeoClient(key, parsed.houseNumber, parsed.street, b);
+    if (result) return result;
+  }
+
+  return null;
+  // unreachable, but satisfies TS
   try {
-    const res = await fetch(
-      `https://api.nyc.gov/geoclient/v2/address.json?${params}`,
-      {
-        headers: { "Ocp-Apim-Subscription-Key": key },
-        next: { revalidate: 3600 },
-      }
-    );
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    const a = data?.address;
-    if (!a || a.geosupportReturnCode !== "00") return null;
-
-    return {
-      bbl: a.bbl,
-      address: `${a.houseNumberIn} ${a.firstStreetNameNormalized}`,
-      borough: BOROUGH_CODE_MAP[a.bblBoroughCode] ?? borough ?? "Manhattan",
-      zip_code: a.zipCode ?? "",
-      neighborhood: a.ntaName ?? null,
-      latitude: a.latitude != null ? parseFloat(a.latitude) : null,
-      longitude: a.longitude != null ? parseFloat(a.longitude) : null,
-    };
-  } catch {
     return null;
   }
 }
